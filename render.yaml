@@ -1,9 +1,9 @@
 services:
   - type: web
-    name: neon-photo-booth
+    name: photobooth
     env: python
-    region: oregon  # or "frankfurt" for EU
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn app:app"
+    startCommand: "python app.py"
+    region: oregon
+    branch: main
     plan: free
-    autoDeploy: true
