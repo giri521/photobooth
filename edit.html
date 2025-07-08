@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Neon Photo Editor - PhotoBooth</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --neon-green: #0ff0fc;
+      --neon-pink: #ff2ced;
+      --neon-purple: #9600ff;
+      --dark-bg: #0a0a0a;
+      --darker-bg: #050505;
+      --text-light: #f0f0f0;
+    }
+    
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--dark-bg);
+      font-family: 'Montserrat', sans-serif;
+      color: var(--text-light);
+      overflow: hidden;
+      height: 100%;
+    }
+
+    .filter-bar {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      background: rgba(10, 10, 10, 0.9);
+      display: flex;
+      overflow-x: auto;
+      padding: 15px;
+      gap: 20px;
+      z-index: 10;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 5px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .filter-item {
+      text-align: center;
+      color: var(--text-light);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      min-width: 90px;
+    }
+
+    .filter-item:hover {
+      transform: translateY(-5px);
+    }
+
+    .filter-item.active {
+      transform: scale(1.1);
+    }
+
+    .filter-item.active img {
+      border-color: var(--neon-pink);
+      box-shadow: 0 0 20px var(--neon-pink);
+    }
+
+    .filter-item img {
+      width: 90px;
+      height: 70px;
+      object-fit: cover;
+      border: 2px solid var(--neon-green);
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .filter-item:hover img {
+      border-color: var(--neon-purple);
+    }
+
+    .filter-item span {
+      display: block;
+      margin-top: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .gallery {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 30px;
+      height: 100vh;
+      padding: 120px 20px 100px;
+      box-sizing: border-box;
+    }
+
+    .gallery img {
+      height: 450px;
+      max-width: 30%;
+      border: 3px solid var(--neon-green);
+      border-radius: 12px;
+      object-fit: cover;
+      transition: all 0.5s ease;
+      box-shadow: 0 0 30px rgba(0, 255, 204, 0.2);
+    }
+
+    .gallery img:hover {
+      transform: scale(1.02);
+      box-shadow: 0 0 40px rgba(0, 255, 204, 0.4);
+    }
+
+    .controls {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 25px;
+      z-index: 10;
+    }
+
+    .btn {
+      background: var(--neon-green);
+      border: none;
+      padding: 14px 30px;
+      font-size: 16px;
+      font-weight: 700;
+      border-radius: 50px;
+      color: #000;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+    }
+
+    .btn:hover {
+      background: #00e6d4;
+      box-shadow: 0 0 30px rgba(0, 255, 204, 0.6);
+      transform: translateY(-3px);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--neon-green);
+      border: 2px solid var(--neon-green);
+      box-shadow: 0 0 15px rgba(0, 255, 204, 0.2);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(0, 255, 204, 0.1);
+      box-shadow: 0 0 25px rgba(0, 255, 204, 0.4);
+    }
+
+    .status-bar {
+      position: fixed;
+      bottom: 10px;
+      left: 0;
+      width: 100%;
+      text-align: center;
+      font-size: 14px;
+      color: var(--neon-green);
+      opacity: 0.8;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--neon-green);
+      border-radius: 4px;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .gallery {
+        flex-direction: column;
+        padding-top: 150px;
+        padding-bottom: 150px;
+      }
+      
+      .gallery img {
+        height: auto;
+        max-width: 90%;
+        max-height: 30%;
+      }
+      
+      .filter-item img {
+        width: 70px;
+        height: 50px;
+      }
+      
+      .controls {
+        bottom: 15px;
+      }
+    }
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #printStrip, #printStrip * {
+    visibility: visible;
+  }
+
+  #printStrip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 20px;
+    text-align: center;
+    background: #fff;
+  }
+
+  .strip {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border: 2px solid #000;
+    padding: 10px;
+    border-radius: 10px;
+    margin: 0 auto;
+    width: fit-content;
+  }
+
+  .strip img {
+    width: 200px;
+    height: 250px;
+    object-fit: cover;
+    border: 1px solid #000;
+    border-radius: 6px;
+  }
+}
+
+  </style>
+</head>
+<body>
+
+  <div class="filter-bar" id="filterBar">
+    <!-- Filters dynamically inserted by JS -->
+  </div>
+
+  <div class="gallery">
+    <img id="photo1" src="">
+    <img id="photo2" src="">
+    <img id="photo3" src="">
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-secondary" onclick="retake()">Retake Photos</button>
+    <button class="btn" onclick="printStrip()">Print Photo Strip</button>
+  </div>
+
+  <div class="status-bar" id="status">
+    Select a filter to apply to all photos
+  </div>
+<!-- Hidden strip for printing -->
+<div id="printStrip" style="display: none;">
+  <div class="strip">
+    <img id="pimg1" src="">
+    <img id="pimg2" src="">
+    <img id="pimg3" src="">
+  </div>
+</div>
+
+  <script>
+    const photo1 = document.getElementById('photo1');
+    const photo2 = document.getElementById('photo2');
+    const photo3 = document.getElementById('photo3');
+    const filterBar = document.getElementById('filterBar');
+    const statusEl = document.getElementById('status');
+
+    // Enhanced filters with more professional effects
+    const filters = [
+      { 
+        name: 'Normal', 
+        value: 'none',
+        desc: 'Original photo with no effects'
+      },
+      { 
+        name: 'Neon Glow', 
+        value: 'contrast(120%) brightness(110%) saturate(130%) hue-rotate(10deg)',
+        desc: 'Vibrant colors with enhanced contrast'
+      },
+      { 
+        name: 'Film Noir', 
+        value: 'grayscale(100%) contrast(120%) brightness(90%)',
+        desc: 'Classic black and white look'
+      },
+      { 
+        name: 'Vintage', 
+        value: 'sepia(60%) contrast(110%) brightness(105%) hue-rotate(-10deg)',
+        desc: 'Warm retro film effect'
+      },
+      { 
+        name: 'Cyberpunk', 
+        value: 'contrast(150%) brightness(110%) hue-rotate(10deg) saturate(200%)',
+        desc: 'Futuristic vibrant colors'
+      },
+      { 
+        name: 'Dreamy', 
+        value: 'brightness(115%) blur(1px) saturate(180%)',
+        desc: 'Soft glow with slight blur'
+      },
+      { 
+        name: 'Dramatic', 
+        value: 'contrast(150%) brightness(90%) saturate(120%)',
+        desc: 'High contrast with deep shadows'
+      },
+      { 
+        name: 'Pastel', 
+        value: 'brightness(115%) saturate(80%) contrast(90%)',
+        desc: 'Soft muted colors'
+      },
+      { 
+        name: 'Golden Hour', 
+        value: 'sepia(30%) brightness(105%) hue-rotate(-10deg) saturate(140%)',
+        desc: 'Warm sunset tones'
+      },
+      { 
+        name: 'Cool Tone', 
+        value: 'brightness(105%) hue-rotate(200deg) saturate(90%)',
+        desc: 'Cool blueish tint'
+      },
+      { 
+        name: 'Invert', 
+        value: 'invert(100%)',
+        desc: 'Color inversion effect'
+      },
+      { 
+        name: 'Pop Art', 
+        value: 'contrast(200%) saturate(200%) brightness(105%)',
+        desc: 'Vibrant comic book style'
+      },
+      { 
+        name: 'Mono Chrome', 
+        value: 'grayscale(100%) contrast(130%)',
+        desc: 'High contrast black and white'
+      },
+      { 
+        name: 'Warm Vintage', 
+        value: 'sepia(50%) hue-rotate(-20deg) saturate(120%) contrast(110%)',
+        desc: '1970s film look'
+      },
+      { 
+        name: 'Cinematic', 
+        value: 'contrast(130%) brightness(95%) saturate(110%)',
+        desc: 'Movie-like color grading'
+      },
+      { 
+        name: 'Faded Film', 
+        value: 'brightness(110%) contrast(90%) saturate(80%)',
+        desc: 'Vintage faded colors'
+      },
+      { 
+        name: 'HDR', 
+        value: 'contrast(140%) brightness(105%) saturate(150%)',
+        desc: 'High dynamic range effect'
+      },
+      { 
+        name: 'Mystic', 
+        value: 'hue-rotate(270deg) saturate(140%) brightness(95%)',
+        desc: 'Purple fantasy tones'
+      },
+      { 
+        name: 'Sunset', 
+        value: 'hue-rotate(-30deg) saturate(150%) brightness(105%)',
+        desc: 'Warm orange glow'
+      },
+      { 
+        name: 'B&W Matte', 
+        value: 'grayscale(100%) contrast(110%) brightness(105%)',
+        desc: 'Matte black and white'
+      }
+    ];
+
+    // Load captured images
+    photo1.src = localStorage.getItem('photo1');
+    photo2.src = localStorage.getItem('photo2');
+    photo3.src = localStorage.getItem('photo3');
+
+    // Current active filter
+    let activeFilter = null;
+
+    // Dynamically generate filter buttons with preview images
+    filters.forEach((f, index) => {
+      const div = document.createElement('div');
+      div.className = 'filter-item';
+      div.dataset.filterIndex = index;
+
+      const preview = document.createElement('img');
+      preview.src = photo1.src;
+      preview.style.filter = f.value;
+
+      const label = document.createElement('span');
+      label.textContent = f.name;
+
+      div.onclick = () => {
+        // Remove active class from all filters
+        document.querySelectorAll('.filter-item').forEach(item => {
+          item.classList.remove('active');
+        });
+        
+        // Add active class to clicked filter
+        div.classList.add('active');
+        
+        // Apply the filter
+        applyFilter(f.value);
+        activeFilter = f;
+        
+        // Update status
+        statusEl.textContent = `Applied: ${f.name} - ${f.desc}`;
+      };
+
+      // Make first filter active by default
+      if (index === 0) {
+        div.classList.add('active');
+        activeFilter = f;
+        statusEl.textContent = `Applied: ${f.name} - ${f.desc}`;
+      }
+
+      div.appendChild(preview);
+      div.appendChild(label);
+      filterBar.appendChild(div);
+    });
+
+    function applyFilter(filterValue) {
+      [photo1, photo2, photo3].forEach(img => {
+        img.style.filter = filterValue;
+      });
+    }
+
+    function retake() {
+      window.location.href = "/camera";
+    }
+function printStrip() {
+  // Prepare print strip
+  document.getElementById('pimg1').src = photo1.src;
+  document.getElementById('pimg2').src = photo2.src;
+  document.getElementById('pimg3').src = photo3.src;
+  
+  // Apply current filter to print images
+  const filterValue = photo1.style.filter;
+  ['pimg1', 'pimg2', 'pimg3'].forEach(id => {
+    document.getElementById(id).style.filter = filterValue;
+  });
+
+  // Show print strip
+  document.getElementById('printStrip').style.display = 'block';
+  
+  // Print and then redirect
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => {
+      window.location.href = "/thanks";
+    }, 500); // Short delay after printing before redirect
+  }, 100); // Short delay before printing
+}
+    </script>
+</body>
+</html>

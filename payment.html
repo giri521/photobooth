@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neon PhotoBooth Pro</title>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #00ffcc;
+      --secondary: #ff00aa;
+      --dark: #0f0f0f;
+      --light: #ffffff;
+      --accent: #ff5e00;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      background: var(--dark);
+      color: var(--light);
+      font-family: 'Montserrat', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+      padding: 20px;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    /* Camera Shutter Effect */
+    .shutter {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--dark);
+      z-index: 1000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      pointer-events: none;
+      opacity: 0;
+      transform: scale(1.5);
+    }
+    
+    /* Main Content */
+    .container {
+      position: relative;
+      z-index: 10;
+      max-width: 800px;
+      padding: 40px;
+      background: rgba(15, 15, 15, 0.8);
+      border-radius: 20px;
+      box-shadow: 0 0 50px rgba(0, 255, 204, 0.2);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(0, 255, 204, 0.1);
+      transform-style: preserve-3d;
+      perspective: 1000px;
+      animation: float 6s ease-in-out infinite;
+    }
+    
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      margin-bottom: 15px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
+      animation: textGlow 2s ease-in-out infinite alternate;
+    }
+    
+    h2 {
+      font-size: clamp(1.2rem, 3vw, 1.8rem);
+      margin-bottom: 25px;
+      color: var(--light);
+      font-weight: 400;
+    }
+    
+    .quote {
+      font-style: italic;
+      font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 40px;
+      position: relative;
+      display: inline-block;
+    }
+    
+    .quote::before, .quote::after {
+      content: '"';
+      color: var(--primary);
+      font-size: 1.5em;
+      position: absolute;
+      opacity: 0.5;
+    }
+    
+    .quote::before {
+      top: -10px;
+      left: -15px;
+    }
+    
+    .quote::after {
+      bottom: -20px;
+      right: -15px;
+    }
+    
+    /* Camera Lens Effect */
+    .lens {
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: radial-gradient(
+        circle at center,
+        rgba(0, 255, 204, 0.1) 0%,
+        transparent 70%
+      );
+      z-index: -1;
+      animation: lensPulse 8s infinite alternate;
+    }
+    
+    .lens:nth-child(1) {
+      top: -50px;
+      left: -50px;
+    }
+    
+    .lens:nth-child(2) {
+      bottom: -50px;
+      right: -50px;
+      animation-delay: 2s;
+    }
+    
+    /* Pay Button */
+    .pay-btn {
+      padding: 18px 45px;
+      background: linear-gradient(45deg, var(--primary), var(--accent));
+      color: var(--dark);
+      border: none;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 50px;
+      margin-top: 10px;
+      transition: all 0.4s ease;
+      box-shadow: 0 5px 25px rgba(0, 255, 204, 0.4);
+      position: relative;
+      overflow: hidden;
+      z-index: 1;
+    }
+    
+    .pay-btn:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 30px rgba(0, 255, 204, 0.6);
+    }
+    
+    .pay-btn:active {
+      transform: translateY(0);
+    }
+    
+    .pay-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(45deg, var(--accent), var(--primary));
+      z-index: -1;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    
+    .pay-btn:hover::before {
+      opacity: 1;
+    }
+    
+    /* Flash Animation */
+    .flash {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: white;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    /* Floating Camera Elements */
+    .camera-element {
+      position: absolute;
+      opacity: 0.1;
+      z-index: -1;
+    }
+    
+    .aperture {
+      width: 100px;
+      height: 100px;
+      background: radial-gradient(
+        circle, 
+        transparent 40%, 
+        rgba(0, 255, 204, 0.2) 40%, 
+        transparent 60%
+      );
+      animation: spin 20s linear infinite;
+    }
+    
+    /* Animations */
+    @keyframes float {
+      0%, 100% { transform: translateY(0) rotateX(0deg) rotateY(0deg); }
+      50% { transform: translateY(-20px) rotateX(5deg) rotateY(5deg); }
+    }
+    
+    @keyframes lensPulse {
+      0% { transform: scale(1); opacity: 0.3; }
+      100% { transform: scale(1.2); opacity: 0.1; }
+    }
+    
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    @keyframes textGlow {
+      from { text-shadow: 0 0 10px rgba(0, 255, 204, 0.3); }
+      to { text-shadow: 0 0 20px rgba(0, 255, 204, 0.6), 0 0 30px rgba(255, 94, 0, 0.4); }
+    }
+    
+    /* Film Grain Effect */
+    body::after {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.05"/></svg>');
+      pointer-events: none;
+      z-index: -1;
+    }
+    
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+      .container {
+        padding: 30px 20px;
+      }
+      
+      .lens {
+        width: 150px;
+        height: 150px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Camera Shutter Effect -->
+  <div class="shutter"></div>
+  
+  <!-- Flash Effect -->
+  <div class="flash"></div>
+  
+  <!-- Camera Lens Effects -->
+  <div class="lens"></div>
+  <div class="lens"></div>
+  
+  <!-- Camera Aperture Elements -->
+  <div class="camera-element aperture" style="top: 10%; left: 10%;"></div>
+  <div class="camera-element aperture" style="bottom: 10%; right: 10%; animation-delay: -10s;"></div>
+  
+  <!-- Main Content -->
+  <div class="container">
+    <h1>Neon PhotoBooth Pro</h1>
+    <h2>Unlock Your Photoshoot Experience</h2>
+    <div class="quote">"Capture moments now, relive them forever."</div>
+    <button class="pay-btn" onclick="payNow()">Pay ₹100 to Start</button>
+  </div>
+
+  <script>
+    function payNow() {
+      // Trigger camera shutter effect
+      const shutter = document.querySelector('.shutter');
+      const flash = document.querySelector('.flash');
+      
+      // First flash
+      shutter.style.opacity = '1';
+      shutter.style.transform = 'scale(1)';
+      flash.style.opacity = '0.8';
+      
+      setTimeout(() => {
+        shutter.style.opacity = '0';
+        shutter.style.transform = 'scale(1.5)';
+        flash.style.opacity = '0';
+      }, 100);
+      
+      // Open payment after animation
+      setTimeout(() => {
+        const options = {
+          key: "rzp_test_blIQ8vxdp4UlLz",
+          amount: 10000,
+          currency: "INR",
+          name: "Neon PhotoBooth Pro",
+          description: "Premium Photo Session",
+          image: "https://example.com/logo.png",
+          handler: function(response) {
+            // Second flash on success
+            shutter.style.opacity = '1';
+            shutter.style.transform = 'scale(1)';
+            flash.style.opacity = '0.8';
+            
+            setTimeout(() => {
+              shutter.style.opacity = '0';
+              shutter.style.transform = 'scale(1.5)';
+              flash.style.opacity = '0';
+              
+              // Redirect after animation
+              setTimeout(() => {
+                window.location.href = "/camera";
+              }, 300);
+            }, 100);
+          },
+          prefill: {
+            name: "Guest",
+            email: "guest@example.com",
+            contact: "9000000000"
+          },
+          theme: {
+            color: "#00ffcc"
+          }
+        };
+        
+        const rzp = new Razorpay(options);
+        rzp.open();
+        
+        rzp.on('payment.failed', function(response) {
+          alert("Payment failed. Please try again.");
+        });
+      }, 300);
+    }
+    
+    // Add floating effect to camera elements
+    document.querySelectorAll('.camera-element').forEach((el, index) => {
+      const duration = 15 + Math.random() * 15;
+      const delay = Math.random() * 5;
+      el.style.animation = `float ${duration}s ease-in-out ${delay}s infinite`;
+    });
+    
+    // Random flash effects in background occasionally
+    setInterval(() => {
+      if(Math.random() > 0.9) {
+        const flash = document.querySelector('.flash');
+        flash.style.opacity = '0.2';
+        setTimeout(() => {
+          flash.style.opacity = '0';
+        }, 100);
+      }
+    }, 5000);
+  </script>
+</body>
+</html>

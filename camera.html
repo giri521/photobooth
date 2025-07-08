@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neon PhotoBooth Pro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #00ffcc;
+      --secondary: #ff00aa;
+      --accent: #ff5e00;
+      --purple: #9600ff;
+      --dark: #0a0a0a;
+      --darker: #050505;
+      --light: #f0f0f0;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--dark);
+      font-family: 'Montserrat', sans-serif;
+      color: var(--light);
+    }
+    
+    /* Camera Shutter Effect */
+    .shutter {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--dark);
+      z-index: 1000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      pointer-events: none;
+      opacity: 0;
+      transform: scale(1.5);
+    }
+    
+    /* Preview thumbnails */
+    .preview-strip {
+      position: fixed;
+      top: 20px;
+      width: 100%;
+      height: 120px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+      z-index: 10;
+      padding: 0 20px;
+    }
+    
+    .preview-strip img {
+      height: 100px;
+      width: 133px;
+      object-fit: cover;
+      border-radius: 8px;
+      box-shadow: 0 0 15px rgba(0, 255, 204, 0.5);
+      transition: all 0.3s ease;
+      opacity: 0.7;
+      transform: scale(0.9);
+      border: 2px solid var(--purple);
+    }
+    
+    .preview-strip img.filled {
+      opacity: 1;
+      transform: scale(1);
+      border: 3px solid var(--primary);
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { 
+        box-shadow: 0 0 15px rgba(0, 255, 204, 0.5);
+        border-color: var(--primary);
+      }
+      50% { 
+        box-shadow: 0 0 25px rgba(0, 255, 204, 0.8);
+        border-color: var(--secondary);
+      }
+      100% { 
+        box-shadow: 0 0 15px rgba(0, 255, 204, 0.5);
+        border-color: var(--primary);
+      }
+    }
+    
+    /* Camera view */
+    .camera-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      z-index: 1;
+    }
+    
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1); /* Mirror effect */
+    }
+    
+    /* Overlay effects */
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(10, 10, 10, 0.7) 0%, rgba(5, 5, 5, 0.5) 100%);
+      z-index: 2;
+    }
+    
+    /* Countdown */
+    #countdown {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 180px;
+      font-weight: 700;
+      color: var(--primary);
+      text-shadow: 0 0 10px var(--primary), 
+                   0 0 20px var(--primary),
+                   0 0 30px var(--secondary);
+      z-index: 5;
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-family: 'Playfair Display', serif;
+    }
+    
+    #countdown.show {
+      opacity: 1;
+    }
+    
+    #countdown.pulse {
+      animation: neonPulse 0.5s infinite alternate;
+    }
+    
+    @keyframes neonPulse {
+      from { text-shadow: 0 0 10px var(--primary), 
+                     0 0 20px var(--primary),
+                     0 0 30px var(--secondary); }
+      to { text-shadow: 0 0 15px var(--primary), 
+                     0 0 30px var(--primary),
+                     0 0 45px var(--secondary); }
+    }
+    
+    /* Flash effect */
+    .flash {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: white;
+      opacity: 0;
+      z-index: 6;
+      pointer-events: none;
+    }
+    
+    .flash.active {
+      animation: flash 0.3s;
+    }
+    
+    @keyframes flash {
+      0% { opacity: 0; }
+      50% { opacity: 0.9; }
+      100% { opacity: 0; }
+    }
+    
+    /* Popup */
+    #popup {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--darker);
+      border: 2px solid var(--primary);
+      border-radius: 15px;
+      padding: 30px 40px;
+      box-shadow: 0 0 30px rgba(0, 255, 204, 0.3);
+      z-index: 20;
+      text-align: center;
+      max-width: 90%;
+      width: 400px;
+      backdrop-filter: blur(10px);
+      animation: float 6s ease-in-out infinite;
+    }
+    
+    #popup h2 {
+      margin-bottom: 20px;
+      color: var(--primary);
+      font-size: 24px;
+      font-family: 'Playfair Display', serif;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    
+    #popup p {
+      margin-bottom: 25px;
+      line-height: 1.5;
+    }
+    
+    .button-group {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .btn {
+      padding: 12px 30px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      position: relative;
+      overflow: hidden;
+      z-index: 1;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(45deg, var(--primary), var(--accent));
+      color: var(--dark);
+      box-shadow: 0 5px 25px rgba(0, 255, 204, 0.4);
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 30px rgba(0, 255, 204, 0.6);
+    }
+    
+    .btn-secondary {
+      background: transparent;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+    }
+    
+    .btn-secondary:hover {
+      background: rgba(0, 255, 204, 0.1);
+      box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
+      transform: translateY(-2px);
+    }
+    
+    /* Status message */
+    #status {
+      position: fixed;
+      bottom: 30px;
+      left: 0;
+      width: 100%;
+      text-align: center;
+      font-size: 18px;
+      color: var(--primary);
+      z-index: 5;
+      opacity: 0.9;
+      text-shadow: 0 0 5px rgba(0, 255, 204, 0.5);
+    }
+    
+    canvas {
+      display: none;
+    }
+    
+    /* Camera Lens Effects */
+    .lens {
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: radial-gradient(
+        circle at center,
+        rgba(0, 255, 204, 0.1) 0%,
+        transparent 70%
+      );
+      z-index: -1;
+      animation: lensPulse 8s infinite alternate;
+    }
+    
+    .lens:nth-child(1) {
+      top: -50px;
+      left: -50px;
+    }
+    
+    .lens:nth-child(2) {
+      bottom: -50px;
+      right: -50px;
+      animation-delay: 2s;
+    }
+    
+    /* Floating Camera Elements */
+    .camera-element {
+      position: absolute;
+      opacity: 0.1;
+      z-index: -1;
+    }
+    
+    .aperture {
+      width: 100px;
+      height: 100px;
+      background: radial-gradient(
+        circle, 
+        transparent 40%, 
+        rgba(0, 255, 204, 0.2) 40%, 
+        transparent 60%
+      );
+      animation: spin 20s linear infinite;
+    }
+    
+    /* Animations */
+    @keyframes float {
+      0%, 100% { transform: translate(-50%, -50%) translateY(0) rotateX(0deg) rotateY(0deg); }
+      50% { transform: translate(-50%, -50%) translateY(-10px) rotateX(5deg) rotateY(5deg); }
+    }
+    
+    @keyframes lensPulse {
+      0% { transform: scale(1); opacity: 0.3; }
+      100% { transform: scale(1.2); opacity: 0.1; }
+    }
+    
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    /* Film Grain Effect */
+    body::after {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.05"/></svg>');
+      pointer-events: none;
+      z-index: -1;
+    }
+    
+    /* Responsive Adjustments */
+    @media (max-width: 1024px) {
+      #countdown {
+        font-size: 150px;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .preview-strip {
+        height: 80px;
+        top: 10px;
+      }
+      
+      .preview-strip img {
+        height: 70px;
+        width: 90px;
+      }
+      
+      #countdown {
+        font-size: 120px;
+      }
+      
+      #popup {
+        width: 90%;
+        padding: 20px;
+      }
+      
+      #status {
+        font-size: 16px;
+        bottom: 20px;
+      }
+      
+      .lens {
+        width: 150px;
+        height: 150px;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      #countdown {
+        font-size: 80px;
+      }
+      
+      .preview-strip {
+        height: 60px;
+        gap: 8px;
+      }
+      
+      .preview-strip img {
+        height: 50px;
+        width: 65px;
+      }
+      
+      .btn {
+        padding: 10px 20px;
+        font-size: 14px;
+      }
+      
+      #popup h2 {
+        font-size: 20px;
+      }
+      
+      #popup p {
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Camera Shutter Effect -->
+  <div class="shutter"></div>
+  
+  <!-- Flash Effect -->
+  <div class="flash" id="flash"></div>
+  
+  <!-- Camera Lens Effects -->
+  <div class="lens"></div>
+  <div class="lens"></div>
+  
+  <!-- Camera Aperture Elements -->
+  <div class="camera-element aperture" style="top: 10%; left: 10%;"></div>
+  <div class="camera-element aperture" style="bottom: 10%; right: 10%; animation-delay: -10s;"></div>
+  
+  <!-- Preview Strip -->
+  <div class="preview-strip">
+    <img id="img1" src="" alt="Photo 1">
+    <img id="img2" src="" alt="Photo 2">
+    <img id="img3" src="" alt="Photo 3">
+  </div>
+
+  <!-- Camera View -->
+  <div class="camera-container">
+    <video id="video" autoplay playsinline></video>
+    <div class="overlay"></div>
+  </div>
+
+  <!-- Countdown Overlay -->
+  <div id="countdown">3</div>
+  
+  <!-- Status Message -->
+  <div id="status">Get ready for your first photo!</div>
+
+  <!-- Canvas for capture -->
+  <canvas id="canvas"></canvas>
+
+  <!-- Retake / Proceed Popup -->
+  <div id="popup">
+    <h2>Photos Captured!</h2>
+    <p>Review your photos above. You can retake them or proceed to editing.</p>
+    <div class="button-group">
+      <button class="btn btn-secondary" onclick="retake()">Retake</button>
+      <button class="btn btn-primary" onclick="proceed()">Proceed</button>
+    </div>
+  </div>
+
+  <script>
+    // DOM Elements
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const countdown = document.getElementById('countdown');
+    const flash = document.getElementById('flash');
+    const statusEl = document.getElementById('status');
+    const ctx = canvas.getContext('2d');
+    const img1 = document.getElementById('img1');
+    const img2 = document.getElementById('img2');
+    const img3 = document.getElementById('img3');
+    const popup = document.getElementById('popup');
+    const shutter = document.querySelector('.shutter');
+    
+    // State
+    let capturedImages = [];
+    let isCountingDown = false;
+    let stream = null;
+    
+    // Initialize camera
+    async function startCamera() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            facingMode: 'user' 
+          } 
+        });
+        video.srcObject = stream;
+        
+        // Set canvas size to match video aspect ratio
+        video.addEventListener('loadedmetadata', () => {
+          const aspectRatio = video.videoWidth / video.videoHeight;
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+        });
+        
+        statusEl.textContent = "Camera ready! Preparing to take photos...";
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        startSequence();
+      } catch (err) {
+        console.error("Camera error:", err);
+        statusEl.textContent = "Error accessing camera. Please allow camera permissions and refresh.";
+        statusEl.style.color = "#ff5555";
+      }
+    }
+    
+    // Capture photo and store
+    function captureAndStore(index) {
+      // Flash effect
+      shutter.style.opacity = '1';
+      shutter.style.transform = 'scale(1)';
+      flash.style.opacity = '0.8';
+      
+      setTimeout(() => {
+        shutter.style.opacity = '0';
+        shutter.style.transform = 'scale(1.5)';
+        flash.style.opacity = '0';
+      }, 100);
+      
+      // Capture image
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = canvas.toDataURL("image/jpeg", 0.9);
+      capturedImages[index].src = imageData;
+      capturedImages[index].classList.add('filled');
+      
+      // Play shutter sound
+      playShutterSound();
+    }
+    
+    // Sound effects
+    function playShutterSound() {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.value = 1000;
+      gainNode.gain.value = 0.5;
+      
+      oscillator.start();
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+      oscillator.stop(audioCtx.currentTime + 0.3);
+    }
+    
+    function playCountdownSound() {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.value = 800;
+      gainNode.gain.value = 0.3;
+      
+      oscillator.start();
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+      oscillator.stop(audioCtx.currentTime + 0.2);
+    }
+    
+    // Countdown with animations and sound
+    function startCountdown(seconds, callback) {
+      if (isCountingDown) return;
+      isCountingDown = true;
+      
+      let count = seconds;
+      countdown.textContent = count;
+      countdown.classList.add('show');
+      
+      if (count <= 3) {
+        countdown.classList.add('pulse');
+        statusEl.textContent = `Smile! Photo in ${count}...`;
+        playCountdownSound();
+      }
+      
+      const interval = setInterval(() => {
+        count--;
+        
+        if (count <= 0) {
+          clearInterval(interval);
+          countdown.classList.remove('show', 'pulse');
+          isCountingDown = false;
+          callback();
+        } else {
+          countdown.textContent = count;
+          
+          if (count <= 3) {
+            countdown.classList.add('pulse');
+            statusEl.textContent = `Smile! Photo in ${count}...`;
+            playCountdownSound();
+          }
+        }
+      }, 1000);
+    }
+    
+    // Photo sequence
+    async function startSequence() {
+      capturedImages = [img1, img2, img3];
+      statusEl.textContent = "First photo in 5 seconds... Get ready!";
+      
+      // First photo after 5s
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      startCountdown(5, () => {
+        captureAndStore(0);
+        
+        // Second photo after 3s
+        setTimeout(() => {
+          statusEl.textContent = "Second photo in 3 seconds...";
+          startCountdown(3, () => {
+            captureAndStore(1);
+            
+            // Third photo after 3s
+            setTimeout(() => {
+              statusEl.textContent = "Third photo in 3 seconds...";
+              startCountdown(3, () => {
+                captureAndStore(2);
+                showPopup();
+              });
+            }, 500);
+          });
+        }, 500);
+      });
+    }
+    
+    function showPopup() {
+      statusEl.textContent = "Photos captured! Review them above.";
+      popup.style.display = "block";
+    }
+    
+    function retake() {
+      img1.src = "";
+      img2.src = "";
+      img3.src = "";
+      img1.classList.remove('filled');
+      img2.classList.remove('filled');
+      img3.classList.remove('filled');
+      popup.style.display = "none";
+      statusEl.textContent = "Preparing to retake photos...";
+      setTimeout(startSequence, 1000);
+    }
+    
+    function proceed() {
+      localStorage.setItem("photo1", img1.src);
+      localStorage.setItem("photo2", img2.src);
+      localStorage.setItem("photo3", img3.src);
+      window.location.href = "/edit";
+    }
+    
+    // Clean up camera stream when leaving
+    window.addEventListener('beforeunload', () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    });
+    
+    // Start the app
+    document.addEventListener('DOMContentLoaded', startCamera);
+    
+    // Add floating effect to camera elements
+    document.querySelectorAll('.camera-element').forEach((el, index) => {
+      const duration = 15 + Math.random() * 15;
+      const delay = Math.random() * 5;
+      el.style.animation = `float ${duration}s ease-in-out ${delay}s infinite`;
+    });
+    
+    // Random flash effects in background occasionally
+    setInterval(() => {
+      if(Math.random() > 0.9) {
+        flash.style.opacity = '0.2';
+        setTimeout(() => {
+          flash.style.opacity = '0';
+        }, 100);
+      }
+    }, 5000);
+  </script>
+</body>
+</html>
